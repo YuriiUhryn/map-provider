@@ -1,0 +1,77 @@
+# Docker ignore file
+# Files and directories to exclude from Docker build context
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+!README.md
+docs/
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.fseventsd
+.Spotlight-V100
+.Trashes
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+*.egg-info/
+.pytest_cache/
+.coverage
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+
+# Large data files that should be mounted as volumes
+# data/*.osm.pbf
+# mbtiles-output/*.mbtiles
+
+# Keep directory structure but not large files
+data/.gitkeep
+mbtiles-output/.gitkeep
+
+# IDE
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Logs
+*.log
+logs/
+
+# Backup files
+*.bak
+*.tmp
+backup/
+
+# Test files
+test/
+tests/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Docker
+docker-compose.override.yml
+.dockerignore
+Dockerfile.dev

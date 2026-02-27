@@ -1,0 +1,88 @@
+version: '3.8'
+
+# Offline Vector Map Pipeline - Docker Compose Configuration
+# ===========================================================
+# This orchestrates all services needed for the offline map
+
+services:
+  
+  # ============================================
+  # Tile Generator Service
+  # ============================================
+  # Generates MBTiles from OSM PBF data
+  # This is a one-time operation, uncommented for initial setup
+  # Run: docker-compose up tile-generator
+  
+  tile-generator:
+    build:
+      context: .
+      target: tile-generator
+    container_name: map-tile-generator
+    profiles:
+      - generate
+    volumes:
+      - ./data:/app/data
+      - ./tilemaker:/app/tilemaker:ro
+      - mbtiles-data:/app/mbtiles-output
+    # By default, merges ALL .osm.pbf files in data/ into one mbtiles (merged-regions.mbtiles)
+    # To process a single specific file, set PROCESS_ALL=false and specify files:
+    # environment:
+    #   - PROCESS_ALL=false
+    #   - INPUT_FILE=/app/data/custom.osm.pbf
+    #   - OUTPUT_FILE=/app/mbtiles-output/custom.mbtiles
+    # Resource limits for tile generation
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+        reservations:
+          memory: 4G
+  
+  
+  # ============================================
+  # TileServer-GL Service
+  # ============================================
+  # Serves MBTiles via HTTP
+  
+  tileserver:
+    build:
+      context: .
+      target: tile-server
+    container_name: map-tileserver
+    ports:
+      - "8080:8080"
+    volumes:
+      - mbtiles-data:/data:ro
+    environment:
+      - NODE_ENV=production
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - mapnet
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 256M
+
+
+# ============================================
+# Networks
+# ============================================
+networks:
+  mapnet:
+    driver: bridge
+
+
+# ============================================
+# Volumes (optional, for persistence)
+# ============================================
+volumes:
+  mbtiles-data:
+    driver: local
