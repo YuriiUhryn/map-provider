@@ -70,6 +70,9 @@ RUN npm install -g tileserver-gl-light@4.6.3
 # Create directory for MBTiles
 RUN mkdir -p /data
 
+# Copy dark map style configuration
+COPY tileserver-config /app/tileserver-config
+
 # MBTiles are provided at runtime via a named Docker volume (mbtiles-data)
 VOLUME /data
 
@@ -80,6 +83,7 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD wget --quiet --tries=1 --spider http://localhost:8080 || exit 1
 
 # Create entrypoint script to serve merged-regions.mbtiles (or any available mbtiles)
+# with the OpenFreeMap dark style
 RUN echo '#!/bin/sh' > /entrypoint.sh && \
     echo '# Look for merged-regions.mbtiles first (default output from --merge)' >> /entrypoint.sh && \
     echo 'MBTILES="/data/merged-regions.mbtiles"' >> /entrypoint.sh && \
@@ -92,8 +96,27 @@ RUN echo '#!/bin/sh' > /entrypoint.sh && \
     echo '  echo "Please mount a volume with .mbtiles files to /data"' >> /entrypoint.sh && \
     echo '  exit 1' >> /entrypoint.sh && \
     echo 'fi' >> /entrypoint.sh && \
-    echo 'echo "Starting TileServer with: $MBTILES"' >> /entrypoint.sh && \
-    echo 'exec tileserver-gl-light "$MBTILES" --port 8080 --bind 0.0.0.0' >> /entrypoint.sh && \
+    echo 'MBTILES_FILENAME=$(basename "$MBTILES")' >> /entrypoint.sh && \
+    echo 'echo "Starting TileServer with: $MBTILES (dark style)"' >> /entrypoint.sh && \
+    echo '# Generate TileServer-GL config with the detected mbtiles filename' >> /entrypoint.sh && \
+    echo 'cat > /tmp/config.json << CFGEOF' >> /entrypoint.sh && \
+    echo '{' >> /entrypoint.sh && \
+    echo '  "options": {' >> /entrypoint.sh && \
+    echo '    "paths": {' >> /entrypoint.sh && \
+    echo '      "root": "/app/tileserver-config",' >> /entrypoint.sh && \
+    echo '      "styles": "styles",' >> /entrypoint.sh && \
+    echo '      "mbtiles": "/data"' >> /entrypoint.sh && \
+    echo '    }' >> /entrypoint.sh && \
+    echo '  },' >> /entrypoint.sh && \
+    echo '  "styles": {' >> /entrypoint.sh && \
+    echo '    "dark": { "style": "dark.json" }' >> /entrypoint.sh && \
+    echo '  },' >> /entrypoint.sh && \
+    echo '  "data": {' >> /entrypoint.sh && \
+    echo '    "openmaptiles": { "mbtiles": "${MBTILES_FILENAME}" }' >> /entrypoint.sh && \
+    echo '  }' >> /entrypoint.sh && \
+    echo '}' >> /entrypoint.sh && \
+    echo 'CFGEOF' >> /entrypoint.sh && \
+    echo 'exec tileserver-gl-light --config /tmp/config.json --port 8080 --bind 0.0.0.0' >> /entrypoint.sh && \
     chmod +x /entrypoint.sh
 
 # Start TileServer

@@ -42,27 +42,6 @@ wget https://planet.openstreetmap.org/pbf/planet-latest.osm.pbf
 - Relations (logical groups of nodes/ways)
 - Tags (key-value metadata)
 
-## File Sizes (Approximate)
-
-| Region | Compressed Size | Uncompressed |
-|--------|----------------|--------------|
-| Netherlands | ~1.2 GB | ~15 GB |
-| Germany | ~3.5 GB | ~40 GB |
-| Europe | ~25 GB | ~300 GB |
-| Planet | ~65 GB | ~1.4 TB |
-
-## Verification
-
-Check the file is downloaded correctly:
-
-```bash
-# Check file size
-ls -lh netherlands-latest.osm.pbf
-
-# Verify it's a valid PBF file (requires osmium-tool)
-osmium fileinfo netherlands-latest.osm.pbf
-```
-
 ## Update Frequency
 
 Geofabrik updates daily. To get the latest data:
@@ -71,8 +50,6 @@ Geofabrik updates daily. To get the latest data:
 # Download latest version (overwrites existing)
 wget https://download.geofabrik.de/europe/netherlands-latest.osm.pbf -O netherlands-latest.osm.pbf
 
-# Or use the update script
-../update_map.sh netherlands
 ```
 
 ## Security

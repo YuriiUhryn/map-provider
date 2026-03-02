@@ -63,22 +63,8 @@ def find_all_pbf(data_dir: str = "data") -> list:
     return sorted(pbf_files)
 
 
-def derive_output_name(input_pbf: str, output_dir: str = "mbtiles-output") -> str:
-    """Derive output MBTiles filename from input PBF filename.
-    
-    Args:
-        input_pbf: Path to input PBF file
-        output_dir: Output directory for MBTiles
-        
-    Returns:
-        Path to output MBTiles file
-    """
-    # Extract region name from input filename
-    # e.g., "netherlands-latest.osm.pbf" -> "netherlands"
-    # e.g., "belgium.osm.pbf" -> "belgium"
-    basename = os.path.basename(input_pbf)
-    region_name = basename.replace("-latest", "").replace(".osm.pbf", "")
-    return os.path.join(output_dir, f"{region_name}.mbtiles")
+def derive_output_name(output_dir: str = "mbtiles-output") -> str:
+    return os.path.join(output_dir, f"region.mbtiles")
 
 
 class MBTilesGenerator:
@@ -116,7 +102,7 @@ class MBTilesGenerator:
         
         # Auto-derive output if not provided
         if output_mbtiles is None:
-            output_mbtiles = derive_output_name(input_pbf)
+            output_mbtiles = derive_output_name()
             logger.info(f"Auto-derived output MBTiles: {output_mbtiles}")
         
         self.input_pbf = Path(input_pbf)
@@ -145,34 +131,6 @@ class MBTilesGenerator:
         
         # Convert backslashes to forward slashes for consistency
         path = path.replace('\\', '/')
-        
-        # Strip Docker container prefix /app/ if present
-        if path.startswith('/app/'):
-            path = path[5:]  # Remove '/app/' prefix
-            logger.info(f"Normalized Docker path: '{original_path}' → '{path}'")
-            return path
-        
-        # Handle absolute paths that might be Git Bash translations
-        # e.g., C:/Program Files/Git/app/data/file.pbf -> data/file.pbf
-        if 'Program Files/Git/app/' in path or 'Program Files (x86)/Git/app/' in path:
-            # Extract the part after /app/
-            parts = path.split('/app/')
-            if len(parts) > 1:
-                path = parts[-1]
-                logger.info(f"Normalized Git Bash translated path: '{original_path}' → '{path}'")
-                return path
-        
-        # Handle other /app/ patterns that might be buried in the path
-        if '/app/' in path and not path.startswith('data/'):
-            app_index = path.rfind('/app/')
-            if app_index >= 0:
-                path = path[app_index + 5:]  # Extract everything after /app/
-                logger.info(f"Normalized embedded /app/ path: '{original_path}' → '{path}'")
-                return path
-        
-        # Path is already relative or doesn't need normalization
-        if original_path != path:
-            logger.debug(f"Path normalized: '{original_path}' → '{path}'")
         
         return path
         
@@ -501,12 +459,6 @@ class MBTilesGenerator:
                 merged_pbf_to_cleanup = merged_pbf
             # Update input to use merged file
             self.input_pbf = merged_pbf
-            # Auto-derive output if not specified
-            if self.output_mbtiles.name == "region-latest.mbtiles":
-                self.output_mbtiles = Path("mbtiles-output/merged-regions.mbtiles")
-                logger.info(f"Output will be: {self.output_mbtiles}")
-                logger.info("")
-        
         # Debug: Show current working directory and data location
         logger.info(f"Current working directory: {Path.cwd()}")
         logger.info(f"Looking for input at: {self.input_pbf.absolute()}")

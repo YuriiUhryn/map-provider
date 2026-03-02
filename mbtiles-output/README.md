@@ -14,27 +14,6 @@ MBTiles is a file format for storing map tiles in a single SQLite database file.
 **Extension:** `.mbtiles`  
 **Content:** Vector tiles (`.pbf` files) + metadata
 
-## File Structure
-
-```sql
--- Metadata table
-CREATE TABLE metadata (
-    name TEXT,
-    value TEXT
-);
-
--- Tiles table
-CREATE TABLE tiles (
-    zoom_level INTEGER,
-    tile_column INTEGER,
-    tile_row INTEGER,
-    tile_data BLOB  -- Gzipped Protocol Buffer
-);
-
--- Index for fast lookups
-CREATE UNIQUE INDEX tile_index ON tiles (zoom_level, tile_column, tile_row);
-```
-
 ## Generation
 
 Generate MBTiles using the provided scripts:
@@ -43,8 +22,6 @@ Generate MBTiles using the provided scripts:
 # Python version
 python3 ../generate_mbtiles.py
 
-# Node.js version
-node ../generate_mbtiles.js
 ```
 
 **Duration:** 5-15 minutes (Netherlands)  
@@ -64,49 +41,6 @@ apt install osmium-tool    # Ubuntu
 osmium fileinfo netherlands.mbtiles
 ```
 
-**sqlite3:**
-```bash
-# Open database
-sqlite3 netherlands.mbtiles
-
-# View metadata
-SELECT * FROM metadata;
-
-# Count tiles
-SELECT COUNT(*) FROM tiles;
-
-# Tiles per zoom level
-SELECT zoom_level, COUNT(*) FROM tiles GROUP BY zoom_level;
-
-# Exit
-.quit
-```
-
-**tilelive:**
-```bash
-npm install -g @mapbox/tilelive @mapbox/mbtiles
-
-# Copy tiles
-tilelive-copy \
-  --minzoom=0 --maxzoom=14 \
-  netherlands.mbtiles \
-  file://./backup.mbtiles
-```
-
-### GUI Tools
-
-**QGIS:**
-1. Open QGIS
-2. Layer → Add Layer → Add Vector Tile Layer
-3. Select `netherlands.mbtiles`
-
-**TileMill (deprecated but still works):**
-```bash
-# View in browser
-tileserver-gl-light netherlands.mbtiles
-# Open http://localhost:8080
-```
-
 ## File Sizes
 
 | Region | z0-12 | z0-14 | z0-16 |
@@ -117,36 +51,6 @@ tileserver-gl-light netherlands.mbtiles
 | World | ~50 GB | ~200 GB | ~800 GB |
 
 **Rule of thumb:** Each additional zoom level multiplies size by ~4x
-
-## Optimization
-
-### Reduce Size
-
-1. **Lower maxzoom:**
-   ```bash
-   python3 ../generate_mbtiles.py --config ../tilemaker/config-minimal.json
-   ```
-
-2. **Filter layers:**
-   - Edit `tilemaker/config-openmaptiles.json`
-   - Remove unused layers
-
-3. **Vacuum database:**
-   ```bash
-   sqlite3 netherlands.mbtiles "VACUUM;"
-   ```
-
-### Improve Performance
-
-1. **Enable write-ahead logging:**
-   ```bash
-   sqlite3 netherlands.mbtiles "PRAGMA journal_mode=WAL;"
-   ```
-
-2. **Rebuild indexes:**
-   ```bash
-   sqlite3 netherlands.mbtiles "REINDEX tile_index;"
-   ```
 
 ## Serving
 
@@ -164,20 +68,6 @@ tileserver-gl-light netherlands.mbtiles --port 8080
 - TileJSON endpoint
 - Font/sprite serving
 
-### tileserver-php
-
-```bash
-# Install
-git clone https://github.com/maptiler/tileserver-php.git
-
-# Copy MBTiles
-cp netherlands.mbtiles tileserver-php/
-
-# Serve with PHP
-cd tileserver-php
-php -S localhost:8080
-```
-
 ### mbview (Python)
 
 ```bash
@@ -185,65 +75,6 @@ pip install mbutil
 mbview netherlands.mbtiles
 ```
 
-## Backup
-
-### Local Backup
-
-```bash
-# Simple copy
-cp netherlands.mbtiles netherlands-backup-$(date +%Y%m%d).mbtiles
-
-# Compressed backup
-gzip -c netherlands.mbtiles > netherlands-backup-$(date +%Y%m%d).mbtiles.gz
-```
-
-### Extract to Directory
-
-```bash
-# Install mb-util
-pip install mbutil
-
-# Extract tiles to directory
-mb-util netherlands.mbtiles netherlands-tiles/
-
-# Directory structure:
-# netherlands-tiles/
-#   0/0/0.pbf
-#   1/0/0.pbf
-#   1/0/1.pbf
-#   ...
-```
-
-## Maintenance
-
-### Check Integrity
-
-```bash
-sqlite3 netherlands.mbtiles "PRAGMA integrity_check;"
-```
-
-Expected output: `ok`
-
-### Repair Corruption
-
-If corrupted:
-
-```bash
-# Dump and recreate
-sqlite3 netherlands.mbtiles ".dump" | sqlite3 netherlands-repaired.mbtiles
-
-# Verify
-sqlite3 netherlands-repaired.mbtiles "PRAGMA integrity_check;"
-```
-
-### Update Metadata
-
-```bash
-sqlite3 netherlands.mbtiles << EOF
-UPDATE metadata SET value = '$(date +%Y-%m-%d)' WHERE name = 'date';
-UPDATE metadata SET value = 'Updated Netherlands Map' WHERE name = 'description';
-EOF
-```
 
 ## Security
 
@@ -281,12 +112,6 @@ chown www-data:www-data netherlands.mbtiles
 - File is corrupted
 - Try repair procedure above
 - Regenerate from OSM PBF
-
-**Issue:** "Tiles not loading"
-
-- Check tile format: `SELECT tile_data FROM tiles LIMIT 1;`
-- Should be gzipped Protocol Buffer
-- Verify with: `file tiles.pbf`
 
 ## Resources
 
