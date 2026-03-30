@@ -1,88 +1,40 @@
-version: '3.8'
+version: '1.0'
 
-# Offline Vector Map Pipeline - Docker Compose Configuration
-# ===========================================================
-# This orchestrates all services needed for the offline map
+# Offline Map Server - Docker Compose Configuration
+# Builds and runs the unified tile generator + tile server
+# 
+# Build with multiple regions:
+# docker-compose build --build-arg OSM_URLS="https://download.geofabrik.de/europe/bulgaria-latest.osm.pbf https://download.geofabrik.de/europe/romania-latest.osm.pbf"
+# 
+# Or with default Italy:
+# docker-compose build
 
 services:
   
-  # ============================================
-  # Tile Generator Service
-  # ============================================
-  # Generates MBTiles from OSM PBF data
-  # This is a one-time operation, uncommented for initial setup
-  # Run: docker-compose up tile-generator
-  
-  tile-generator:
+  map-server:
     build:
       context: .
-      target: tile-generator
-    container_name: map-tile-generator
-    profiles:
-      - generate
+      dockerfile: Dockerfile
+      args:
+        - OSM_URLS=${OSM_URLS:-}
+    container_name: map-server
+    ports:
+      - "8009:8009"
     volumes:
-      - ./data:/app/data
+      - ./data:/app/data:ro
       - ./tilemaker:/app/tilemaker:ro
-      - mbtiles-data:/app/mbtiles-output
-    # By default, merges ALL .osm.pbf files in data/ into one mbtiles (merged-regions.mbtiles)
-    # To process a single specific file, set PROCESS_ALL=false and specify files:
-    # environment:
-    #   - PROCESS_ALL=false
-    #   - INPUT_FILE=/app/data/custom.osm.pbf
-    #   - OUTPUT_FILE=/app/mbtiles-output/custom.mbtiles
-    # Resource limits for tile generation
+    environment:
+      - NODE_ENV=production
     deploy:
       resources:
         limits:
-          memory: 8G
+          memory: 16G
         reservations:
-          memory: 4G
-  
-  
-  # ============================================
-  # TileServer-GL Service
-  # ============================================
-  # Serves MBTiles via HTTP
-  
-  tileserver:
-    build:
-      context: .
-      target: tile-server
-    container_name: map-tileserver
-    ports:
-      - "8080:8080"
-    volumes:
-      - mbtiles-data:/data:ro
-    environment:
-      - NODE_ENV=production
+          memory: 8G
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080"]
+      test: ["CMD", "curl", "-sf", "http://localhost:8009"]
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 10s
+      start_period: 30s
     restart: unless-stopped
-    networks:
-      - mapnet
-    deploy:
-      resources:
-        limits:
-          memory: 1G
-        reservations:
-          memory: 256M
-
-
-# ============================================
-# Networks
-# ============================================
-networks:
-  mapnet:
-    driver: bridge
-
-
-# ============================================
-# Volumes (optional, for persistence)
-# ============================================
-volumes:
-  mbtiles-data:
-    driver: local

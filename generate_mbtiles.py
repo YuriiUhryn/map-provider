@@ -518,7 +518,7 @@ class MBTilesGenerator:
             logger.info("  1. Start TileServer-GL:")
             logger.info(f"     tileserver-gl-light {self.output_mbtiles.absolute()}")
             logger.info("  2. View in browser:")
-            logger.info("     http://localhost:8080")
+            logger.info("     http://localhost:8009")
         
         return success
 
